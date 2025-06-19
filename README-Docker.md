@@ -255,6 +255,15 @@ curl http://localhost:5000/api/health
 # Upload de arquivo
 curl -X POST -F "file=@teste.txt" http://localhost:5000/api/extract
 
+# Análise por dados (base64)
+curl -X POST http://localhost:5000/api/extract/data \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filename": "documento.txt",
+    "file_data": "SGVsbG8gV29ybGQ=",
+    "encoding": "base64"
+  }'
+
 # Tipos suportados
 curl http://localhost:5000/api/supported-types
 ```

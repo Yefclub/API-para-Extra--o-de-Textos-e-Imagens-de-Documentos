@@ -703,6 +703,38 @@
                 padding: 8px 6px;
             }
         }
+
+        .info-box, .warning-box {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: var(--border-radius-small);
+            border: 1px solid;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(102, 126, 234, 0.05) 100%);
+            border-color: rgba(79, 172, 254, 0.3);
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, rgba(255, 107, 157, 0.1) 0%, rgba(255, 148, 114, 0.05) 100%);
+            border-color: rgba(255, 107, 157, 0.3);
+        }
+
+        .info-box h4, .warning-box h4 {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .info-box ul, .warning-box ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .info-box li, .warning-box li {
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -719,6 +751,7 @@
                 <li><a href="#overview">Visão Geral</a></li>
                 <li><a href="#authentication">Autenticação</a></li>
                 <li><a href="#endpoints">Endpoints</a></li>
+                <li><a href="#data-extraction">Extração via Dados</a></li>
                 <li><a href="#url-extraction">Extração via URL</a></li>
                 <li><a href="#examples">Exemplos</a></li>
                 <li><a href="#errors">Códigos de Erro</a></li>
@@ -1011,6 +1044,277 @@
   "characters": 2500,
   "words": 400
 }</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="data-extraction" class="section">
+                <h2>Extração via Dados</h2>
+                <p>A API suporte análise de documentos através de dados (base64 ou binários) sem necessidade de upload de arquivos.</p>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method post">POST</span>
+                        <span class="endpoint-path">/api/extract/data</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <h4>Análise Individual por Dados</h4>
+                        <p>Processa um documento enviado como dados base64 ou binários. Ideal para integração com sistemas que já possuem os arquivos em memória.</p>
+
+                        <h4>Parâmetros de Entrada (JSON)</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Campo</th>
+                                    <th>Tipo</th>
+                                    <th>Obrigatório</th>
+                                    <th>Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>filename</code></td>
+                                    <td>string</td>
+                                    <td><span class="badge required">Sim</span></td>
+                                    <td>Nome do arquivo com extensão</td>
+                                </tr>
+                                <tr>
+                                    <td><code>file_data</code></td>
+                                    <td>string</td>
+                                    <td><span class="badge required">Sim</span></td>
+                                    <td>Dados do arquivo (base64 ou binário)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>encoding</code></td>
+                                    <td>string</td>
+                                    <td><span class="badge optional">Não</span></td>
+                                    <td>Tipo de codificação: "base64" (padrão) ou "binary"</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Exemplo de Requisição</h4>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">cURL</button>
+                                <button class="postman-tab">JavaScript</button>
+                                <button class="postman-tab">Python</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+curl -X POST http://localhost:5000/api/extract/data \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filename": "documento.pdf",
+    "file_data": "JVBERi0xLjQKJdPr6eEKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4=",
+    "encoding": "base64"
+  }'
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Resposta de Sucesso</h4>
+                        <div class="response-status success">
+                            <i class="fas fa-check-circle"></i>
+                            200 OK
+                        </div>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">JSON Response</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+<span class="keyword">{</span>
+  <span class="property">"success"</span><span class="keyword">:</span> <span class="keyword">true</span><span class="keyword">,</span>
+  <span class="property">"data"</span><span class="keyword">:</span> <span class="keyword">{</span>
+    <span class="property">"text"</span><span class="keyword">:</span> <span class="string">"Texto extraído do documento..."</span><span class="keyword">,</span>
+    <span class="property">"file_info"</span><span class="keyword">:</span> <span class="keyword">{</span>
+      <span class="property">"filename"</span><span class="keyword">:</span> <span class="string">"documento.pdf"</span><span class="keyword">,</span>
+      <span class="property">"type"</span><span class="keyword">:</span> <span class="string">"pdf"</span><span class="keyword">,</span>
+      <span class="property">"mime_type"</span><span class="keyword">:</span> <span class="string">"application/pdf"</span><span class="keyword">,</span>
+      <span class="property">"size_bytes"</span><span class="keyword">:</span> <span class="number">15436</span><span class="keyword">,</span>
+      <span class="property">"size_mb"</span><span class="keyword">:</span> <span class="number">0.01</span><span class="keyword">,</span>
+      <span class="property">"encoding_used"</span><span class="keyword">:</span> <span class="string">"base64"</span>
+    <span class="keyword">}</span>
+  <span class="keyword">}</span><span class="keyword">,</span>
+  <span class="property">"message"</span><span class="keyword">:</span> <span class="string">"Documento processado com sucesso a partir de dados"</span>
+<span class="keyword">}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method post">POST</span>
+                        <span class="endpoint-path">/api/extract/data/bulk</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <h4>Análise em Lote por Dados</h4>
+                        <p>Processa múltiplos documentos enviados como dados. Limite máximo de 10 documentos por requisição.</p>
+
+                        <h4>Parâmetros de Entrada (JSON)</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Campo</th>
+                                    <th>Tipo</th>
+                                    <th>Obrigatório</th>
+                                    <th>Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>documents</code></td>
+                                    <td>array</td>
+                                    <td><span class="badge required">Sim</span></td>
+                                    <td>Lista de documentos para processar (máx. 10)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Estrutura de cada documento:</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Campo</th>
+                                    <th>Tipo</th>
+                                    <th>Obrigatório</th>
+                                    <th>Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>filename</code></td>
+                                    <td>string</td>
+                                    <td><span class="badge required">Sim</span></td>
+                                    <td>Nome do arquivo com extensão</td>
+                                </tr>
+                                <tr>
+                                    <td><code>file_data</code></td>
+                                    <td>string</td>
+                                    <td><span class="badge required">Sim</span></td>
+                                    <td>Dados do arquivo (base64 ou binário)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>encoding</code></td>
+                                    <td>string</td>
+                                    <td><span class="badge optional">Não</span></td>
+                                    <td>Tipo de codificação: "base64" (padrão) ou "binary"</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Exemplo de Requisição</h4>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">JSON Request</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+<span class="keyword">{</span>
+  <span class="property">"documents"</span><span class="keyword">:</span> <span class="keyword">[</span>
+    <span class="keyword">{</span>
+      <span class="property">"filename"</span><span class="keyword">:</span> <span class="string">"doc1.txt"</span><span class="keyword">,</span>
+      <span class="property">"file_data"</span><span class="keyword">:</span> <span class="string">"VGV4dG8gZG8gcHJpbWVpcm8gZG9jdW1lbnRv"</span><span class="keyword">,</span>
+      <span class="property">"encoding"</span><span class="keyword">:</span> <span class="string">"base64"</span>
+    <span class="keyword">}</span><span class="keyword">,</span>
+    <span class="keyword">{</span>
+      <span class="property">"filename"</span><span class="keyword">:</span> <span class="string">"doc2.pdf"</span><span class="keyword">,</span>
+      <span class="property">"file_data"</span><span class="keyword">:</span> <span class="string">"JVBERi0xLjQKJdPr6eEKMSAwIG9iago8PA=="</span><span class="keyword">,</span>
+      <span class="property">"encoding"</span><span class="keyword">:</span> <span class="string">"base64"</span>
+    <span class="keyword">}</span>
+  <span class="keyword">]</span>
+<span class="keyword">}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Resposta de Sucesso</h4>
+                        <div class="response-status success">
+                            <i class="fas fa-check-circle"></i>
+                            200 OK
+                        </div>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">JSON Response</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+<span class="keyword">{</span>
+  <span class="property">"success"</span><span class="keyword">:</span> <span class="keyword">true</span><span class="keyword">,</span>
+  <span class="property">"data"</span><span class="keyword">:</span> <span class="keyword">{</span>
+    <span class="property">"results"</span><span class="keyword">:</span> <span class="keyword">[</span>
+      <span class="keyword">{</span>
+        <span class="property">"index"</span><span class="keyword">:</span> <span class="number">0</span><span class="keyword">,</span>
+        <span class="property">"success"</span><span class="keyword">:</span> <span class="keyword">true</span><span class="keyword">,</span>
+        <span class="property">"data"</span><span class="keyword">:</span> <span class="keyword">{</span>
+          <span class="property">"text"</span><span class="keyword">:</span> <span class="string">"Texto do primeiro documento"</span><span class="keyword">,</span>
+          <span class="property">"file_info"</span><span class="keyword">:</span> <span class="keyword">{</span> <span class="comment">/* informações do arquivo */</span> <span class="keyword">}</span>
+        <span class="keyword">}</span>
+      <span class="keyword">}</span>
+    <span class="keyword">]</span><span class="keyword">,</span>
+    <span class="property">"errors"</span><span class="keyword">:</span> <span class="keyword">[]</span><span class="keyword">,</span>
+    <span class="property">"statistics"</span><span class="keyword">:</span> <span class="keyword">{</span>
+      <span class="property">"total_documents"</span><span class="keyword">:</span> <span class="number">2</span><span class="keyword">,</span>
+      <span class="property">"successful"</span><span class="keyword">:</span> <span class="number">2</span><span class="keyword">,</span>
+      <span class="property">"failed"</span><span class="keyword">:</span> <span class="number">0</span><span class="keyword">,</span>
+      <span class="property">"success_rate"</span><span class="keyword">:</span> <span class="number">100.0</span><span class="keyword">,</span>
+      <span class="property">"total_processing_time_seconds"</span><span class="keyword">:</span> <span class="number">1.234</span>
+    <span class="keyword">}</span>
+  <span class="keyword">}</span><span class="keyword">,</span>
+  <span class="property">"message"</span><span class="keyword">:</span> <span class="string">"Processamento concluído: 2/2 documentos processados com sucesso"</span>
+<span class="keyword">}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>💡 Casos de Uso</h4>
+                        <div class="info-box">
+                            <h4>🔗 Integração com Sistemas</h4>
+                            <ul>
+                                <li>APIs que fornecem documentos em base64</li>
+                                <li>Sistemas legados com dados binários</li>
+                                <li>Integrações com bancos de dados</li>
+                            </ul>
+                            
+                            <h4>⚡ Processamento Automatizado</h4>
+                            <ul>
+                                <li>Análise em lote de documentos armazenados</li>
+                                <li>Pipelines de processamento de dados</li>
+                                <li>Automação de workflows</li>
+                            </ul>
+                            
+                            <h4>🌐 Aplicações Web Modernas</h4>
+                            <ul>
+                                <li>Frontend que converte arquivos para base64</li>
+                                <li>SPAs que não querem fazer upload tradicional</li>
+                                <li>APIs REST puras</li>
+                            </ul>
+                        </div>
+
+                        <h4>🚨 Limitações</h4>
+                        <div class="warning-box">
+                            <ul>
+                                <li><strong>Tamanho máximo:</strong> Mesmo limite dos uploads (50MB)</li>
+                                <li><strong>Tipos suportados:</strong> Mesmos formatos da API de upload</li>
+                                <li><strong>Lote:</strong> Máximo 10 documentos por requisição</li>
+                                <li><strong>Encoding:</strong> Apenas base64 e binary suportados</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </section>

@@ -32,6 +32,7 @@ ALLOWED_EXTENSIONS = {
     'pdf': 'application/pdf',
     'doc': 'application/msword',
     'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'xls': 'application/vnd.ms-excel',
     'csv': 'text/csv',
@@ -47,6 +48,7 @@ ALLOWED_EXTENSIONS = {
 MAX_FILE_SIZES = {
     'pdf': 50 * 1024 * 1024,  # 50MB
     'docx': 20 * 1024 * 1024,  # 20MB
+    'pptx': 25 * 1024 * 1024,  # 25MB
     'xlsx': 30 * 1024 * 1024,  # 30MB
     'default': 10 * 1024 * 1024  # 10MB
 }
@@ -207,10 +209,11 @@ def validate_file_size(file_size, file_extension):
     return file_size <= max_size
 
 def extract_text_from_docx(file_path):
-    """Extrai texto e metadados de documentos Word (.docx)"""
+    """Extrai texto, imagens e metadados de documentos Word (.docx)"""
     try:
         doc = docx.Document(file_path)
         text_content = []
+        images = []
         
         # Extrair texto dos parágrafos
         for paragraph in doc.paragraphs:
@@ -252,6 +255,60 @@ def extract_text_from_docx(file_path):
                     'text': '\n'.join([' | '.join(row) for row in table_rows])
                 })
         
+        # Extrair imagens do documento
+        try:
+            # Acessar o arquivo ZIP do documento Word
+            import zipfile
+            from PIL import Image
+            import io
+            
+            with zipfile.ZipFile(file_path, 'r') as docx_zip:
+                # Listar arquivos de mídia
+                media_files = [f for f in docx_zip.namelist() if f.startswith('word/media/')]
+                
+                for idx, media_file in enumerate(media_files):
+                    try:
+                        # Ler dados da imagem
+                        img_data = docx_zip.read(media_file)
+                        
+                        # Verificar se é imagem válida
+                        try:
+                            img = Image.open(io.BytesIO(img_data))
+                            width, height = img.size
+                            img_format = img.format or 'UNKNOWN'
+                            
+                            # Converter para base64
+                            img_base64 = base64.b64encode(img_data).decode('utf-8')
+                            
+                            # Determinar tipo MIME
+                            mime_type = f"image/{img_format.lower()}"
+                            if img_format.upper() == 'JPEG':
+                                mime_type = "image/jpeg"
+                            elif img_format.upper() == 'PNG':
+                                mime_type = "image/png"
+                            
+                            images.append({
+                                'index': idx + 1,
+                                'filename': media_file.split('/')[-1],
+                                'format': img_format.upper(),
+                                'width': width,
+                                'height': height,
+                                'size_bytes': len(img_data),
+                                'data': img_base64,
+                                'mime_type': mime_type
+                            })
+                            
+                            logger.debug(f"Imagem extraída: {media_file} - {width}x{height} - {len(img_data)} bytes")
+                            
+                        except Exception as img_process_error:
+                            logger.warning(f"Arquivo de mídia não é imagem válida: {media_file} - {img_process_error}")
+                            
+                    except Exception as media_error:
+                        logger.warning(f"Erro ao processar mídia {media_file}: {media_error}")
+                        
+        except Exception as image_error:
+            logger.warning(f"Erro ao extrair imagens do Word: {image_error}")
+        
         # Extrair propriedades do documento
         core_properties = doc.core_properties
         metadata = {
@@ -267,21 +324,189 @@ def extract_text_from_docx(file_path):
         for table in tables_data:
             combined_text += '\n\n' + table['text']
         
+        # Adicionar informação sobre imagens no texto
+        if images:
+            combined_text += f"\n\n[INFO: Documento contém {len(images)} imagem(s) extraída(s)]"
+        
         return {
             'text': combined_text,
             'paragraphs': text_content,
             'tables': tables_data,
+            'images': images,
             'metadata': metadata,
             'stats': {
                 'paragraph_count': len(doc.paragraphs),
                 'table_count': len(doc.tables),
+                'image_count': len(images),
                 'character_count': len(combined_text),
                 'word_count': len(combined_text.split())
             }
         }
     except Exception as e:
-        logger.error(f"Erro ao extrair texto do Word: {str(e)}")
-        raise Exception(f"Erro ao extrair texto do Word: {str(e)}")
+        logger.error(f"Erro ao extrair dados do Word: {str(e)}")
+        raise Exception(f"Erro ao extrair dados do Word: {str(e)}")
+
+def extract_text_from_pptx(file_path):
+    """Extrai texto, imagens e metadados de apresentações PowerPoint (.pptx)"""
+    try:
+        from pptx import Presentation
+        import zipfile
+        from PIL import Image
+        import io
+        
+        prs = Presentation(file_path)
+        text_content = []
+        images = []
+        slides_data = []
+        
+        # Extrair texto e layout de cada slide
+        for slide_idx, slide in enumerate(prs.slides):
+            slide_text = []
+            slide_shapes = []
+            
+            # Processar formas no slide
+            for shape in slide.shapes:
+                shape_info = {
+                    'type': str(shape.shape_type),
+                    'text': ''
+                }
+                
+                # Extrair texto de formas com texto
+                if hasattr(shape, "text") and shape.text.strip():
+                    shape_info['text'] = shape.text.strip()
+                    slide_text.append(shape.text.strip())
+                
+                # Verificar se é uma tabela
+                if hasattr(shape, "table"):
+                    table_text = []
+                    for row in shape.table.rows:
+                        row_text = []
+                        for cell in row.cells:
+                            if cell.text.strip():
+                                row_text.append(cell.text.strip())
+                        if row_text:
+                            table_text.append(' | '.join(row_text))
+                    
+                    if table_text:
+                        table_content = '\n'.join(table_text)
+                        shape_info['text'] = table_content
+                        slide_text.append(table_content)
+                
+                if shape_info['text']:
+                    slide_shapes.append(shape_info)
+            
+            # Dados do slide
+            slide_data = {
+                'slide_number': slide_idx + 1,
+                'text': '\n'.join(slide_text),
+                'shapes': slide_shapes,
+                'shape_count': len(slide.shapes)
+            }
+            
+            slides_data.append(slide_data)
+            
+            if slide_text:
+                text_content.append({
+                    'slide': slide_idx + 1,
+                    'text': '\n'.join(slide_text)
+                })
+        
+        # Extrair imagens do arquivo PPTX
+        try:
+            with zipfile.ZipFile(file_path, 'r') as pptx_zip:
+                # Listar arquivos de mídia
+                media_files = [f for f in pptx_zip.namelist() if f.startswith('ppt/media/')]
+                
+                for idx, media_file in enumerate(media_files):
+                    try:
+                        # Ler dados da imagem
+                        img_data = pptx_zip.read(media_file)
+                        
+                        # Verificar se é imagem válida
+                        try:
+                            img = Image.open(io.BytesIO(img_data))
+                            width, height = img.size
+                            img_format = img.format or 'UNKNOWN'
+                            
+                            # Converter para base64
+                            img_base64 = base64.b64encode(img_data).decode('utf-8')
+                            
+                            # Determinar tipo MIME
+                            mime_type = f"image/{img_format.lower()}"
+                            if img_format.upper() == 'JPEG':
+                                mime_type = "image/jpeg"
+                            elif img_format.upper() == 'PNG':
+                                mime_type = "image/png"
+                            
+                            images.append({
+                                'index': idx + 1,
+                                'filename': media_file.split('/')[-1],
+                                'format': img_format.upper(),
+                                'width': width,
+                                'height': height,
+                                'size_bytes': len(img_data),
+                                'data': img_base64,
+                                'mime_type': mime_type
+                            })
+                            
+                            logger.debug(f"Imagem extraída do PPTX: {media_file} - {width}x{height} - {len(img_data)} bytes")
+                            
+                        except Exception as img_process_error:
+                            logger.warning(f"Arquivo de mídia não é imagem válida: {media_file} - {img_process_error}")
+                            
+                    except Exception as media_error:
+                        logger.warning(f"Erro ao processar mídia {media_file}: {media_error}")
+                        
+        except Exception as image_error:
+            logger.warning(f"Erro ao extrair imagens do PowerPoint: {image_error}")
+        
+        # Metadados da apresentação
+        metadata = {
+            'slide_count': len(prs.slides),
+            'slide_width': prs.slide_width,
+            'slide_height': prs.slide_height,
+        }
+        
+        # Tentar extrair propriedades do core
+        try:
+            core_props = prs.core_properties
+            metadata.update({
+                'title': core_props.title or '',
+                'author': core_props.author or '',
+                'subject': core_props.subject or '',
+                'created': core_props.created.isoformat() if core_props.created else None,
+                'modified': core_props.modified.isoformat() if core_props.modified else None
+            })
+        except Exception as props_error:
+            logger.warning(f"Erro ao extrair propriedades: {props_error}")
+        
+        # Texto combinado
+        combined_text = ''
+        for slide_data in slides_data:
+            if slide_data['text']:
+                combined_text += f"--- Slide {slide_data['slide_number']} ---\n{slide_data['text']}\n\n"
+        
+        # Adicionar informação sobre imagens
+        if images:
+            combined_text += f"[INFO: Apresentação contém {len(images)} imagem(s) extraída(s)]"
+        
+        return {
+            'text': combined_text.strip(),
+            'slides': slides_data,
+            'images': images,
+            'metadata': metadata,
+            'stats': {
+                'slide_count': len(prs.slides),
+                'image_count': len(images),
+                'character_count': len(combined_text),
+                'word_count': len(combined_text.split()),
+                'total_shapes': sum(slide['shape_count'] for slide in slides_data)
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Erro ao extrair dados do PowerPoint: {str(e)}")
+        raise Exception(f"Erro ao extrair dados do PowerPoint: {str(e)}")
 
 def is_scanned_pdf(doc):
     """
@@ -529,77 +754,135 @@ def extract_text_from_pdf(file_path):
                 except Exception as font_error:
                     logger.warning(f"Erro ao extrair fontes da página {page_num}: {font_error}")
                 
-                # Extrair imagens embutidas
+                # Extrair imagens embutidas com melhor tratamento
                 try:
                     image_list = page.get_images()
+                    logger.debug(f"Página {page_num + 1}: encontradas {len(image_list)} imagens embutidas")
+                    
                     for img_index, img in enumerate(image_list):
                         try:
                             xref = img[0]
-                            pix = pymupdf.Pixmap(doc, xref)
+                            base_image = doc.extract_image(xref)
                             
-                            if pix.n - pix.alpha < 4:  # GRAY ou RGB
-                                img_data = pix.tobytes("png")
+                            if base_image:
+                                img_data = base_image["image"]
+                                img_ext = base_image["ext"]
                                 img_base64 = base64.b64encode(img_data).decode()
+                                
+                                # Obter dimensões usando Pixmap como fallback
+                                try:
+                                    pix = pymupdf.Pixmap(doc, xref)
+                                    width, height = pix.width, pix.height
+                                    pix = None
+                                except:
+                                    width, height = 0, 0
+                                
+                                # Determinar tipo MIME
+                                mime_type = f"image/{img_ext}"
+                                if img_ext.lower() in ['jpg', 'jpeg']:
+                                    mime_type = "image/jpeg"
+                                elif img_ext.lower() == 'png':
+                                    mime_type = "image/png"
                                 
                                 images.append({
                                     'page': page_num + 1,
                                     'index': img_index + 1,
-                                    'format': 'png',
+                                    'format': img_ext.upper(),
                                     'data': img_base64,
-                                    'width': pix.width,
-                                    'height': pix.height,
-                                    'size_bytes': len(img_data)
+                                    'width': width,
+                                    'height': height,
+                                    'size_bytes': len(img_data),
+                                    'mime_type': mime_type,
+                                    'xref': xref
                                 })
+                                
+                                logger.debug(f"Imagem extraída: página {page_num + 1}, índice {img_index + 1}, {width}x{height}, {len(img_data)} bytes")
                             
-                            pix = None
                         except Exception as img_error:
-                            logger.warning(f"Erro ao extrair imagem {img_index} da página {page_num}: {img_error}")
+                            logger.warning(f"Erro ao extrair imagem {img_index} da página {page_num + 1}: {img_error}")
+                            # Tentar método alternativo com Pixmap
+                            try:
+                                xref = img[0]
+                                pix = pymupdf.Pixmap(doc, xref)
+                                
+                                if pix.n - pix.alpha < 4:  # GRAY ou RGB
+                                    img_data = pix.tobytes("png")
+                                    img_base64 = base64.b64encode(img_data).decode()
+                                    
+                                    images.append({
+                                        'page': page_num + 1,
+                                        'index': img_index + 1,
+                                        'format': 'PNG',
+                                        'data': img_base64,
+                                        'width': pix.width,
+                                        'height': pix.height,
+                                        'size_bytes': len(img_data),
+                                        'mime_type': 'image/png',
+                                        'extracted_method': 'pixmap_fallback'
+                                    })
+                                    
+                                    logger.debug(f"Imagem extraída (fallback): página {page_num + 1}, {pix.width}x{pix.height}")
+                                
+                                pix = None
+                            except Exception as fallback_error:
+                                logger.warning(f"Falha também no método alternativo para imagem {img_index}: {fallback_error}")
+                                
                 except Exception as page_error:
-                    logger.warning(f"Erro ao processar imagens da página {page_num}: {page_error}")
+                    logger.warning(f"Erro ao processar imagens da página {page_num + 1}: {page_error}")
             
-            # SISTEMA DE FALLBACK PARA PDFs ESCANEADOS
-            if is_scanned and scanned_confidence >= 0.5:
-                logger.info(f"PDF detectado como escaneado (confiança: {scanned_confidence:.2f}). Ativando fallback de imagens.")
-                
-                try:
-                    # Configurar DPI baseado na confiança e qualidade desejada
+            # EXTRAÇÃO DE IMAGENS DE PÁGINAS (sempre ativar para visualização)
+            page_images = []
+            try:
+                # Configurar qualidade baseada no número de imagens embutidas
+                if len(images) == 0 or is_scanned:
+                    # Se não há imagens embutidas ou é escaneado, converter páginas
                     if scanned_confidence >= 0.8:
                         dpi = 300  # Alta qualidade para PDFs claramente escaneados
                         image_format = 'PNG'  # PNG para preservar qualidade
+                    elif scanned_confidence >= 0.5:
+                        dpi = 250  # Qualidade média-alta
+                        image_format = 'PNG'
                     else:
-                        dpi = 200  # Qualidade boa para casos duvidosos
-                        image_format = 'JPEG'  # JPEG para economia de espaço
+                        dpi = 150  # Qualidade padrão para visualização
+                        image_format = 'JPEG'
                     
-                    # Converter páginas em imagens
-                    fallback_images = pdf_pages_to_images(doc, dpi=dpi, image_format=image_format)
+                    logger.info(f"Extraindo imagens de páginas com DPI {dpi} formato {image_format}")
+                    page_images = pdf_pages_to_images(doc, dpi=dpi, image_format=image_format)
                     
-                    # Criar texto indicativo do fallback
-                    if len(text_content) == 0:  # Se não há texto extraível
-                        fallback_text = f"[PDF DIGITALIZADO DETECTADO - {total_pages} páginas convertidas em imagens]\n\n"
-                        fallback_text += f"Este documento foi identificado como digitalizado/escaneado.\n"
-                        fallback_text += f"Confiança na detecção: {scanned_confidence:.1%}\n"
-                        fallback_text += f"As páginas foram convertidas em imagens de {dpi} DPI para preservar o conteúdo.\n\n"
+                    if is_scanned and scanned_confidence >= 0.5:
+                        logger.info(f"PDF detectado como escaneado (confiança: {scanned_confidence:.2f}). Páginas convertidas para preservar conteúdo.")
                         
-                        for i, img in enumerate(fallback_images):
-                            if 'error' not in img:
-                                fallback_text += f"--- Página {img['page']} (Imagem {img['width']}x{img['height']}) ---\n"
-                                fallback_text += f"[Imagem disponível em formato {img['format']} - {img['size_bytes']} bytes]\n\n"
-                        
-                        combined_text = fallback_text
+                        # Criar texto indicativo do fallback para PDFs escaneados
+                        if len(text_content) == 0:
+                            fallback_text = f"[PDF DIGITALIZADO DETECTADO - {total_pages} páginas convertidas em imagens]\n\n"
+                            fallback_text += f"Este documento foi identificado como digitalizado/escaneado.\n"
+                            fallback_text += f"Confiança na detecção: {scanned_confidence:.1%}\n"
+                            fallback_text += f"As páginas foram convertidas em imagens de {dpi} DPI para preservar o conteúdo.\n\n"
+                            
+                            for i, img in enumerate(page_images):
+                                if 'error' not in img:
+                                    fallback_text += f"--- Página {img['page']} (Imagem {img['width']}x{img['height']}) ---\n"
+                                    fallback_text += f"[Imagem disponível em formato {img['format']} - {img['size_bytes']} bytes]\n\n"
+                            
+                            combined_text = fallback_text
+                        else:
+                            # Se há algum texto, adicionar aviso sobre fallback
+                            combined_text = '\n\n'.join([f"--- Página {item['page']} ---\n{item['text']}" for item in text_content])
+                            combined_text += f"\n\n[AVISO: PDF detectado como possivelmente escaneado (confiança: {scanned_confidence:.1%})."
+                            combined_text += f" Imagens de páginas foram geradas para garantir preservação do conteúdo.]"
                     else:
-                        # Se há algum texto, adicionar aviso sobre fallback
+                        # PDF normal com imagens de páginas para visualização
                         combined_text = '\n\n'.join([f"--- Página {item['page']} ---\n{item['text']}" for item in text_content])
-                        combined_text += f"\n\n[AVISO: PDF detectado como possivelmente escaneado (confiança: {scanned_confidence:.1%})."
-                        combined_text += f" Imagens de fallback foram geradas para garantir preservação do conteúdo.]"
+                        if page_images:
+                            combined_text += f"\n\n[INFO: {len(page_images)} páginas convertidas em imagens para visualização.]"
+                else:
+                    # PDF normal com imagens embutidas - só texto
+                    combined_text = '\n\n'.join([f"--- Página {item['page']} ---\n{item['text']}" for item in text_content])
                     
-                    logger.info(f"Fallback concluído: {len(fallback_images)} páginas convertidas em imagens.")
-                    
-                except Exception as fallback_error:
-                    logger.error(f"Erro no sistema de fallback: {fallback_error}")
-                    # Continuar com extração normal em caso de erro no fallback
-                    fallback_images = []
-            else:
-                # PDF normal - texto combinado tradicional
+            except Exception as page_img_error:
+                logger.error(f"Erro ao extrair imagens de páginas: {page_img_error}")
+                # Continuar com extração normal em caso de erro
+                page_images = []
                 combined_text = '\n\n'.join([f"--- Página {item['page']} ---\n{item['text']}" for item in text_content])
         
         # Preparar resultado final
@@ -619,15 +902,22 @@ def extract_text_from_pdf(file_path):
             }
         }
         
-        # Adicionar imagens de fallback se disponíveis
-        if fallback_images:
-            result['fallback_images'] = fallback_images
-            result['stats']['fallback_pages'] = len(fallback_images)
-            result['stats']['total_fallback_size'] = sum(img.get('size_bytes', 0) for img in fallback_images)
+        # Adicionar imagens de páginas se disponíveis
+        if page_images:
+            result['page_images'] = page_images
+            result['stats']['page_images_count'] = len(page_images)
+            result['stats']['total_page_images_size'] = sum(img.get('size_bytes', 0) for img in page_images if isinstance(img, dict))
             
-            # Calcular tamanho total das imagens em MB
-            total_size_mb = result['stats']['total_fallback_size'] / (1024 * 1024)
-            result['stats']['total_fallback_size_mb'] = round(total_size_mb, 2)
+            # Calcular tamanho total das imagens de páginas em MB
+            total_size_mb = result['stats']['total_page_images_size'] / (1024 * 1024)
+            result['stats']['total_page_images_size_mb'] = round(total_size_mb, 2)
+            
+            # Indicar se são imagens de fallback (para PDFs escaneados)
+            if is_scanned and scanned_confidence >= 0.5:
+                result['stats']['is_fallback'] = True
+                result['fallback_images'] = page_images  # Manter compatibilidade
+            else:
+                result['stats']['is_fallback'] = False
         
         return result
     except Exception as e:
@@ -794,7 +1084,7 @@ def extract_text_from_txt(file_path):
         raise Exception(f"Erro ao extrair texto: {str(e)}")
 
 def extract_text_from_image(file_path):
-    """Extrai metadados de imagens"""
+    """Extrai metadados e dados de imagens em formato padronizado"""
     try:
         with Image.open(file_path) as img:
             # Metadados básicos
@@ -803,22 +1093,53 @@ def extract_text_from_image(file_path):
                 'mode': img.mode,
                 'size': img.size,
                 'width': img.width,
-                'height': img.height
+                'height': img.height,
+                'has_transparency': img.mode in ('RGBA', 'LA') or 'transparency' in img.info
             }
             
-            # Converter para base64 para visualização
-            img_buffer = io.BytesIO()
-            img.save(img_buffer, format=img.format or 'PNG')
-            img_base64 = base64.b64encode(img_buffer.getvalue()).decode()
+            # Ler arquivo original para base64
+            with open(file_path, 'rb') as img_file:
+                img_data = img_file.read()
+                img_base64 = base64.b64encode(img_data).decode('utf-8')
+            
+            # Determinar tipo MIME
+            mime_type = f"image/{img.format.lower()}" if img.format else "image/unknown"
+            if img.format and img.format.upper() == 'JPEG':
+                mime_type = "image/jpeg"
+            elif img.format and img.format.upper() == 'PNG':
+                mime_type = "image/png"
+            
+            # Preparar dados da imagem no formato padrão
+            image_data = {
+                'index': 1,
+                'filename': file_path.split('/')[-1] if '/' in file_path else file_path.split('\\')[-1],
+                'format': img.format or 'UNKNOWN',
+                'width': img.width,
+                'height': img.height,
+                'mode': img.mode,
+                'size_bytes': len(img_data),
+                'data': img_base64,
+                'mime_type': mime_type
+            }
+            
+            # Texto descritivo
+            description = f"Imagem detectada: {img.format} {img.width}x{img.height} pixels, Modo: {img.mode}"
+            ocr_note = "[OCR não configurado - Para extrair texto de imagens, configure o Tesseract OCR]"
+            combined_text = f"{description}\n\n{ocr_note}\n\n[INFO: Imagem incluída em base64 para visualização]"
             
             return {
-                'text': f"Imagem detectada: {img.format} {img.width}x{img.height} pixels",
+                'text': combined_text,
+                'images': [image_data],
                 'metadata': metadata,
-                'image_data': img_base64,
                 'stats': {
                     'format': img.format,
+                    'width': img.width,
+                    'height': img.height,
+                    'mode': img.mode,
+                    'image_count': 1,
                     'size_pixels': f"{img.width}x{img.height}",
-                    'mode': img.mode
+                    'character_count': len(combined_text),
+                    'word_count': len(combined_text.split())
                 }
             }
     except Exception as e:
@@ -1299,6 +1620,352 @@ def extract_document_from_url():
             'success': False,
             'error': str(e),
             'error_code': 'EXTRACTION_ERROR'
+        }), 500
+
+@extractor_bp.route('/extract/data', methods=['POST'])
+def extract_document_from_data():
+    """Endpoint para extração de documentos a partir de dados (base64 ou bytes)"""
+    try:
+        # Verificar se dados foram enviados
+        if not request.json:
+            return jsonify({
+                'success': False,
+                'error': 'Dados JSON são obrigatórios',
+                'error_code': 'NO_JSON_DATA'
+            }), 400
+        
+        data = request.json
+        
+        # Verificar campos obrigatórios
+        if 'file_data' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Campo "file_data" é obrigatório',
+                'error_code': 'MISSING_FILE_DATA'
+            }), 400
+        
+        if 'filename' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Campo "filename" é obrigatório',
+                'error_code': 'MISSING_FILENAME'
+            }), 400
+        
+        filename = secure_filename(data['filename'])
+        file_data = data['file_data']
+        encoding = data.get('encoding', 'base64')  # base64 ou binary
+        
+        # Validar tipo de arquivo
+        if not allowed_file(filename):
+            return jsonify({
+                'success': False,
+                'error': 'Tipo de arquivo não suportado',
+                'error_code': 'UNSUPPORTED_TYPE',
+                'supported_types': list(ALLOWED_EXTENSIONS.keys())
+            }), 400
+        
+        file_extension = filename.rsplit('.', 1)[1].lower()
+        
+        # Processar dados baseado na codificação
+        try:
+            if encoding == 'base64':
+                # Remover prefixos data URI se presente
+                if ',' in file_data:
+                    file_data = file_data.split(',')[1]
+                
+                # Decodificar base64
+                file_bytes = base64.b64decode(file_data)
+            elif encoding == 'binary':
+                # Assumir que os dados são bytes diretos
+                if isinstance(file_data, str):
+                    file_bytes = file_data.encode('latin-1')
+                else:
+                    file_bytes = file_data
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Encoding deve ser "base64" ou "binary"',
+                    'error_code': 'INVALID_ENCODING'
+                }), 400
+                
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Erro ao decodificar dados: {str(e)}',
+                'error_code': 'DECODE_ERROR'
+            }), 400
+        
+        file_size = len(file_bytes)
+        
+        # Validar tamanho do arquivo
+        if not validate_file_size(file_size, file_extension):
+            max_size = MAX_FILE_SIZES.get(file_extension, MAX_FILE_SIZES['default'])
+            return jsonify({
+                'success': False,
+                'error': f'Arquivo muito grande. Tamanho máximo: {max_size // (1024*1024)}MB',
+                'error_code': 'FILE_TOO_LARGE',
+                'max_size_mb': max_size // (1024*1024)
+            }), 413
+        
+        # Salvar arquivo temporariamente
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{file_extension}') as temp_file:
+            temp_file.write(file_bytes)
+            temp_file_path = temp_file.name
+        
+        try:
+            # Processar arquivo baseado na extensão
+            if file_extension == 'docx':
+                result = extract_text_from_docx(temp_file_path)
+            elif file_extension == 'pdf':
+                result = extract_text_from_pdf(temp_file_path)
+            elif file_extension in ['xlsx', 'xls']:
+                result = extract_data_from_excel(temp_file_path)
+            elif file_extension == 'csv':
+                result = extract_text_from_csv(temp_file_path)
+            elif file_extension == 'txt':
+                result = extract_text_from_txt(temp_file_path)
+            elif file_extension in ['png', 'jpg', 'jpeg', 'bmp', 'tiff']:
+                result = extract_text_from_image(temp_file_path)
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f'Processamento para {file_extension} não implementado',
+                    'error_code': 'PROCESSING_NOT_IMPLEMENTED'
+                }), 400
+            
+            # Adicionar informações do arquivo
+            result['file_info'] = {
+                'filename': filename,
+                'type': file_extension,
+                'mime_type': ALLOWED_EXTENSIONS.get(file_extension, 'unknown'),
+                'size_bytes': file_size,
+                'size_mb': round(file_size / (1024*1024), 2),
+                'encoding_used': encoding
+            }
+            
+            logger.info(f"Arquivo processado com sucesso via dados: {filename} ({file_size} bytes)")
+            
+            return jsonify({
+                'success': True,
+                'data': result,
+                'message': 'Documento processado com sucesso a partir de dados'
+            })
+        
+        finally:
+            # Limpar arquivo temporário
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+    
+    except Exception as e:
+        logger.error(f"Erro no processamento de dados: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_code': 'PROCESSING_ERROR'
+        }), 500
+
+@extractor_bp.route('/extract/data/bulk', methods=['POST'])
+def extract_multiple_documents_from_data():
+    """Endpoint para processamento em lote de múltiplos documentos a partir de dados"""
+    try:
+        if not request.json:
+            return jsonify({
+                'success': False,
+                'error': 'Dados JSON são obrigatórios',
+                'error_code': 'NO_JSON_DATA'
+            }), 400
+        
+        data = request.json
+        
+        if 'documents' not in data or not isinstance(data['documents'], list):
+            return jsonify({
+                'success': False,
+                'error': 'Campo "documents" é obrigatório e deve ser uma lista',
+                'error_code': 'INVALID_DOCUMENTS'
+            }), 400
+        
+        documents = data['documents']
+        
+        if len(documents) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'Nenhum documento foi enviado',
+                'error_code': 'NO_DOCUMENTS'
+            }), 400
+        
+        if len(documents) > 10:  # Limitar a 10 documentos por vez
+            return jsonify({
+                'success': False,
+                'error': 'Máximo de 10 documentos por vez',
+                'error_code': 'TOO_MANY_DOCUMENTS'
+            }), 400
+        
+        results = []
+        errors = []
+        total_processing_time = 0
+        
+        for i, doc in enumerate(documents):
+            start_time = time.time()
+            try:
+                # Verificar campos obrigatórios
+                if 'file_data' not in doc or 'filename' not in doc:
+                    errors.append({
+                        'index': i,
+                        'error': 'Campos "file_data" e "filename" são obrigatórios',
+                        'error_code': 'MISSING_REQUIRED_FIELDS'
+                    })
+                    continue
+                
+                filename = secure_filename(doc['filename'])
+                file_data = doc['file_data']
+                encoding = doc.get('encoding', 'base64')
+                
+                # Validar tipo de arquivo
+                if not allowed_file(filename):
+                    errors.append({
+                        'index': i,
+                        'filename': filename,
+                        'error': 'Tipo de arquivo não suportado',
+                        'error_code': 'UNSUPPORTED_TYPE'
+                    })
+                    continue
+                
+                file_extension = filename.rsplit('.', 1)[1].lower()
+                
+                # Processar dados baseado na codificação
+                try:
+                    if encoding == 'base64':
+                        # Remover prefixos data URI se presente
+                        if ',' in file_data:
+                            file_data = file_data.split(',')[1]
+                        file_bytes = base64.b64decode(file_data)
+                    elif encoding == 'binary':
+                        if isinstance(file_data, str):
+                            file_bytes = file_data.encode('latin-1')
+                        else:
+                            file_bytes = file_data
+                    else:
+                        errors.append({
+                            'index': i,
+                            'filename': filename,
+                            'error': 'Encoding deve ser "base64" ou "binary"',
+                            'error_code': 'INVALID_ENCODING'
+                        })
+                        continue
+                        
+                except Exception as e:
+                    errors.append({
+                        'index': i,
+                        'filename': filename,
+                        'error': f'Erro ao decodificar dados: {str(e)}',
+                        'error_code': 'DECODE_ERROR'
+                    })
+                    continue
+                
+                file_size = len(file_bytes)
+                
+                # Validar tamanho do arquivo
+                if not validate_file_size(file_size, file_extension):
+                    max_size = MAX_FILE_SIZES.get(file_extension, MAX_FILE_SIZES['default'])
+                    errors.append({
+                        'index': i,
+                        'filename': filename,
+                        'error': f'Arquivo muito grande. Máximo: {max_size // (1024*1024)}MB',
+                        'error_code': 'FILE_TOO_LARGE'
+                    })
+                    continue
+                
+                # Salvar arquivo temporariamente
+                with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{file_extension}') as temp_file:
+                    temp_file.write(file_bytes)
+                    temp_file_path = temp_file.name
+                
+                try:
+                    # Processar arquivo baseado na extensão
+                    if file_extension == 'docx':
+                        result = extract_text_from_docx(temp_file_path)
+                    elif file_extension == 'pdf':
+                        result = extract_text_from_pdf(temp_file_path)
+                    elif file_extension in ['xlsx', 'xls']:
+                        result = extract_data_from_excel(temp_file_path)
+                    elif file_extension == 'csv':
+                        result = extract_text_from_csv(temp_file_path)
+                    elif file_extension == 'txt':
+                        result = extract_text_from_txt(temp_file_path)
+                    elif file_extension in ['png', 'jpg', 'jpeg', 'bmp', 'tiff']:
+                        result = extract_text_from_image(temp_file_path)
+                    else:
+                        errors.append({
+                            'index': i,
+                            'filename': filename,
+                            'error': f'Processamento para {file_extension} não implementado',
+                            'error_code': 'PROCESSING_NOT_IMPLEMENTED'
+                        })
+                        continue
+                    
+                    # Calcular tempo de processamento
+                    processing_time = time.time() - start_time
+                    total_processing_time += processing_time
+                    
+                    # Adicionar informações do arquivo
+                    result['file_info'] = {
+                        'filename': filename,
+                        'type': file_extension,
+                        'mime_type': ALLOWED_EXTENSIONS.get(file_extension, 'unknown'),
+                        'size_bytes': file_size,
+                        'size_mb': round(file_size / (1024*1024), 2),
+                        'encoding_used': encoding,
+                        'processing_time_seconds': round(processing_time, 3)
+                    }
+                    
+                    results.append({
+                        'index': i,
+                        'success': True,
+                        'data': result
+                    })
+                    
+                finally:
+                    # Limpar arquivo temporário
+                    if os.path.exists(temp_file_path):
+                        os.unlink(temp_file_path)
+                        
+            except Exception as e:
+                errors.append({
+                    'index': i,
+                    'filename': doc.get('filename', 'unknown'),
+                    'error': str(e),
+                    'error_code': 'PROCESSING_ERROR'
+                })
+        
+        # Estatísticas
+        total_documents = len(documents)
+        successful_documents = len(results)
+        failed_documents = len(errors)
+        
+        logger.info(f"Processamento em lote via dados: {successful_documents}/{total_documents} sucessos")
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'results': results,
+                'errors': errors,
+                'statistics': {
+                    'total_documents': total_documents,
+                    'successful': successful_documents,
+                    'failed': failed_documents,
+                    'success_rate': round((successful_documents / total_documents) * 100, 2) if total_documents > 0 else 0,
+                    'total_processing_time_seconds': round(total_processing_time, 3)
+                }
+            },
+            'message': f'Processamento concluído: {successful_documents}/{total_documents} documentos processados com sucesso'
+        })
+    
+    except Exception as e:
+        logger.error(f"Erro no processamento em lote de dados: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_code': 'BULK_PROCESSING_ERROR'
         }), 500
 
 @extractor_bp.route('/extract/url/bulk', methods=['POST'])
