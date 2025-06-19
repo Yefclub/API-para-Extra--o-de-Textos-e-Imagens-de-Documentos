@@ -1,5 +1,5 @@
-# Use Python 3.9 slim image for smaller size
-FROM python:3.9-slim
+# Use Python 3.11 slim image for full compatibility
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -31,6 +31,8 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements first for better caching
 COPY requirements.txt .
+# Alternative: Use requirements-py310.txt for Python 3.10 compatibility
+# COPY requirements-py310.txt requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
