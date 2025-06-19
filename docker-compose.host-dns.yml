@@ -5,9 +5,9 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
-    container_name: document-extractor-api-prod
-    ports:
-      - "5000:5000"
+    container_name: document-extractor-api-host-dns
+    # Use host networking for complete DNS compatibility
+    network_mode: "host"
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
@@ -22,28 +22,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - document-extractor-network
-    # DNS configuration to use host's DNS
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-      - 1.1.1.1
-    dns_search:
-      - localdomain
-    # Alternative: Use host's network stack completely
-    # network_mode: "host"
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-
-
-
-networks:
-  document-extractor-network:
-    driver: bridge
 
 volumes:
   document_uploads: 

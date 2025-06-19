@@ -17,6 +17,9 @@ docker-compose up -d --build
 ```bash
 # Usar configuração de produção
 docker-compose -f docker-compose.prod.yml up -d --build
+
+# Para redes corporativas que precisam de DNS completo do host
+docker-compose -f docker-compose.host-dns.yml up -d --build
 ```
 
 ## 🔧 Comandos Úteis
@@ -85,19 +88,42 @@ environment:
   - CUSTOM_VAR=value
 ```
 
-### Configurações de DNS
-O container está configurado com:
+## 🌐 Configuração de DNS/Rede
 
-**Servidores DNS:**
-- Google DNS: `8.8.8.8`, `8.8.4.4`
-- Cloudflare DNS: `1.1.1.1`
+### Opção 1: DNS Customizado (Padrão)
+Usa servidores DNS públicos + configuração personalizada:
+```yaml
+dns:
+  - 8.8.8.8
+  - 8.8.4.4
+  - 1.1.1.1
+dns_search:
+  - localdomain
+```
 
-**Mapeamento de Hosts:**
-- `potencial.com.br` → `127.0.0.1`
-- `api.potencial.com.br` → `127.0.0.1`
-- `www.potencial.com.br` → `127.0.0.1`
+### Opção 2: Rede do Host (Corporativo)
+Para redes corporativas que precisam de DNS interno:
+```bash
+# Use esta configuração para acesso completo ao DNS corporativo
+docker-compose -f docker-compose.host-dns.yml up -d --build
+```
 
-Para alterar, edite as seções `dns` e `extra_hosts` nos arquivos docker-compose.
+**Vantagens do Host Network:**
+- ✅ Acesso completo ao DNS corporativo
+- ✅ Resolução de nomes internos
+- ✅ Acesso a serviços da rede local
+- ⚠️ Remove isolamento de rede
+
+### Opção 3: DNS Personalizado
+Para configurar DNS específicos, edite o docker-compose:
+```yaml
+dns:
+  - 192.168.1.1        # DNS da sua rede
+  - 8.8.8.8            # Fallback
+extra_hosts:
+  - "servidor.local:192.168.1.100"
+  - "api.interna:10.0.0.50"
+```
 
 ## 🗄️ Banco de Dados
 
@@ -240,46 +266,4 @@ docker-compose exec document-extractor-api bash
 
 # Executar testes Python
 docker-compose exec document-extractor-api python -m pytest
-
-# Debug de conectividade de rede
-docker-compose exec document-extractor-api python debug-network.py
-```
-
-## 🌐 Troubleshooting de Conectividade
-
-### Erro: "Erro de conexão ao baixar arquivo"
-
-Se você receber este erro ao tentar extrair de URLs externas:
-
-**1. Verificar DNS e Conectividade:**
-```bash
-# Executar script de debug
-docker-compose exec document-extractor-api python debug-network.py
-
-# Testar DNS manualmente
-docker-compose exec document-extractor-api nslookup potential-ai.grpotencial.com.br
-
-# Testar conectividade
-docker-compose exec document-extractor-api curl -I https://potential-ai.grpotencial.com.br
-```
-
-**2. Verificar Configuração de Proxy/Firewall:**
-- Certifique-se de que o container pode acessar URLs externas
-- Verifique se há firewall bloqueando conexões HTTPS (porta 443)
-- Se usar proxy corporativo, configure nas variáveis de ambiente
-
-**3. Configurar Proxy (se necessário):**
-```yaml
-# No docker-compose.yml, adicione:
-environment:
-  - HTTP_PROXY=http://seu-proxy:porta
-  - HTTPS_PROXY=http://seu-proxy:porta
-  - NO_PROXY=localhost,127.0.0.1
-```
-
-**4. Ajustar Mapeamento de Hosts:**
-Se o domínio `potential-ai.grpotencial.com.br` deve apontar para um IP específico:
-```yaml
-extra_hosts:
-  - "potential-ai.grpotencial.com.br:IP_DO_SERVIDOR"
 ``` 
