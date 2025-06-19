@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  document-extractor-api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: document-extractor-api-prod
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+    volumes:
+      # Only mount necessary data directories for production
+      - ./database:/app/database
+      - document_uploads:/app/uploads
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - document-extractor-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+
+
+networks:
+  document-extractor-network:
+    driver: bridge
+
+volumes:
+  document_uploads: 

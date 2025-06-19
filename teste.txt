@@ -1,0 +1,18 @@
+Este é um documento de teste para a API de extração de documentos.
+
+A API Document Extractor foi desenvolvida para processar diversos tipos de arquivos:
+- Documentos PDF
+- Arquivos Word (DOC e DOCX)
+- Planilhas Excel (XLS e XLSX)
+- Arquivos de texto simples
+
+Este arquivo de teste contém texto em português e serve para verificar se a extração de texto está funcionando corretamente.
+
+Características do sistema:
+1. Extração de texto de múltiplos formatos
+2. Extração de imagens de PDFs
+3. Processamento de tabelas em documentos Word
+4. Análise de dados estruturados em planilhas Excel
+
+A API retorna informações detalhadas sobre o documento processado, incluindo estatísticas como número de páginas, parágrafos, palavras e caracteres.
+

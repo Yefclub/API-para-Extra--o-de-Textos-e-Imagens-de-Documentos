@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Extractor API - Documentação</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            /* Dark Theme Gradients */
+            --bg-primary: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            --bg-secondary: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            --accent-purple: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --accent-cyan: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --accent-pink: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+            --accent-green: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --accent-orange: linear-gradient(135deg, #ff9472 0%, #f2709c 100%);
+            
+            /* Glass Effect Dark */
+            --glass-bg: rgba(45, 45, 68, 0.3);
+            --glass-bg-strong: rgba(45, 45, 68, 0.5);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-border-hover: rgba(255, 255, 255, 0.2);
+            
+            /* Postman-like colors */
+            --postman-bg: #1e1e1e;
+            --postman-border: #333333;
+            --postman-green: #00d4aa;
+            --postman-orange: #ff6c37;
+            --postman-blue: #4fb3d9;
+            --postman-red: #f93e3e;
+            --postman-purple: #9c56ff;
+            
+            /* Shadows */
+            --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --shadow-strong: 0 20px 40px rgba(0, 0, 0, 0.4);
+            --shadow-glow: 0 0 30px rgba(102, 126, 234, 0.3);
+            --shadow-hover: 0 15px 35px rgba(0, 0, 0, 0.4);
+            
+            /* Colors */
+            --text-primary: #ffffff;
+            --text-secondary: #b8bcc8;
+            --text-accent: #4facfe;
+            --border-primary: rgba(255, 255, 255, 0.1);
+            --border-accent: rgba(79, 172, 254, 0.3);
+            
+            /* Layout */
+            --border-radius: 24px;
+            --border-radius-small: 16px;
+            --animation-speed: 0.5s;
+            --animation-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            background-attachment: fixed;
+            overflow-x: hidden;
+            color: var(--text-primary);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(79, 172, 254, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 107, 157, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+            animation: gradientShift 15s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-strong);
+            color: var(--text-primary);
+            padding: 50px 40px;
+            text-align: left;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(79, 172, 254, 0.05) 50%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, #4facfe 50%, #667eea 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .nav {
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-soft);
+            padding: 20px;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            margin-bottom: 30px;
+        }
+
+        .nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .nav li {
+            margin: 0;
+        }
+
+        .nav a {
+            display: block;
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+        }
+
+        .nav a:hover {
+            background: var(--accent-cyan);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 172, 254, 0.3);
+            border-color: rgba(79, 172, 254, 0.5);
+        }
+
+        .content {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-strong);
+            padding: 50px;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 60px;
+            position: relative;
+        }
+
+        .section h2 {
+            color: var(--text-primary);
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff 0%, #4facfe 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+        }
+
+        .section h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: var(--accent-cyan);
+            border-radius: 2px;
+        }
+
+        .section h3 {
+            color: var(--text-primary);
+            font-size: 1.6rem;
+            margin: 40px 0 20px 0;
+            font-weight: 600;
+        }
+
+        .section h4 {
+            color: var(--text-secondary);
+            font-size: 1.3rem;
+            margin: 30px 0 15px 0;
+            font-weight: 500;
+        }
+
+        .section p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+        .endpoint {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-small);
+            margin: 30px 0;
+            overflow: hidden;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            box-shadow: var(--shadow-soft);
+            transition: all 0.3s ease;
+        }
+
+        .endpoint:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--glass-border-hover);
+        }
+
+        .endpoint-header {
+            background: var(--glass-bg-strong);
+            color: var(--text-primary);
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .method {
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            min-width: 60px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .method.post {
+            background: var(--postman-orange);
+        }
+
+        .method.get {
+            background: var(--postman-green);
+        }
+
+        .method.put {
+            background: var(--postman-blue);
+        }
+
+        .method.delete {
+            background: var(--postman-red);
+        }
+
+        .endpoint-path {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 1.1rem;
+            color: var(--text-accent);
+            font-weight: 500;
+            background: rgba(79, 172, 254, 0.1);
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(79, 172, 254, 0.2);
+        }
+
+        .endpoint-body {
+            padding: 30px;
+            color: var(--text-secondary);
+        }
+
+        /* Postman-style Code Blocks */
+        .postman-request {
+            background: var(--postman-bg);
+            border: 1px solid var(--postman-border);
+            border-radius: 12px;
+            margin: 25px 0;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .postman-tabs {
+            background: #2a2a2a;
+            border-bottom: 1px solid var(--postman-border);
+            display: flex;
+            padding: 0;
+        }
+
+        .postman-tab {
+            padding: 12px 20px;
+            background: #2a2a2a;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .postman-tab.active {
+            background: var(--postman-bg);
+            border-bottom-color: var(--postman-orange);
+            color: var(--postman-orange);
+        }
+
+        .postman-tab:hover:not(.active) {
+            background: #333333;
+        }
+
+        .postman-content {
+            padding: 0;
+        }
+
+        .code-block {
+            background: var(--postman-bg);
+            color: #f8f8f2;
+            padding: 25px;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin: 0;
+            position: relative;
+            border: none;
+        }
+
+        .code-block .comment {
+            color: #75715e;
+        }
+
+        .code-block .string {
+            color: #e6db74;
+        }
+
+        .code-block .number {
+            color: #ae81ff;
+        }
+
+        .code-block .keyword {
+            color: #f92672;
+        }
+
+        .code-block .property {
+            color: #66d9ef;
+        }
+
+        .code-copy-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .code-copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .response-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 15px 0;
+        }
+
+        .response-status.success {
+            background: rgba(0, 212, 170, 0.1);
+            color: var(--postman-green);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+        }
+
+        .response-status.error {
+            background: rgba(249, 62, 62, 0.1);
+            color: var(--postman-red);
+            border: 1px solid rgba(249, 62, 62, 0.3);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            background: var(--glass-bg);
+            border-radius: var(--border-radius-small);
+            overflow: hidden;
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+        }
+
+        .table th {
+            background: var(--glass-bg-strong);
+            color: var(--text-primary);
+            padding: 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .table td {
+            padding: 18px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge.required {
+            background: rgba(249, 62, 62, 0.1);
+            color: var(--postman-red);
+            border: 1px solid rgba(249, 62, 62, 0.3);
+        }
+
+        .badge.optional {
+            background: rgba(79, 172, 254, 0.1);
+            color: var(--postman-blue);
+            border: 1px solid rgba(79, 172, 254, 0.3);
+        }
+
+        .alert {
+            padding: 20px 25px;
+            border-radius: var(--border-radius-small);
+            margin: 30px 0;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .alert::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: currentColor;
+        }
+
+        .alert.info {
+            background: rgba(79, 172, 254, 0.1);
+            border: 1px solid rgba(79, 172, 254, 0.3);
+            color: var(--postman-blue);
+        }
+
+        .alert.warning {
+            background: rgba(255, 108, 55, 0.1);
+            border: 1px solid rgba(255, 108, 55, 0.3);
+            color: var(--postman-orange);
+        }
+
+        .alert.success {
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+            color: var(--postman-green);
+        }
+
+        .try-it {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-accent);
+            border-radius: var(--border-radius-small);
+            padding: 30px;
+            margin: 30px 0;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .try-it h4 {
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .btn {
+            background: var(--accent-cyan);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s var(--animation-bounce);
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(79, 172, 254, 0.4);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn.secondary {
+            background: var(--glass-bg-strong);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .btn.secondary:hover {
+            background: var(--glass-border-hover);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 30px 20px;
+                text-align: center;
+            }
+
+            .header h1 {
+                font-size: 2.2rem;
+            }
+
+            .nav {
+                padding: 15px;
+                top: 10px;
+            }
+
+            .nav ul {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .nav a {
+                padding: 10px 20px;
+                text-align: center;
+            }
+
+            .content {
+                padding: 30px 20px;
+            }
+
+            .section h2 {
+                font-size: 2rem;
+            }
+
+            .endpoint-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .endpoint-path {
+                width: 100%;
+                word-break: break-all;
+            }
+
+            .table {
+                font-size: 0.8rem;
+            }
+
+            .table th,
+            .table td {
+                padding: 12px 10px;
+            }
+
+            .postman-tabs {
+                flex-wrap: wrap;
+            }
+
+            .postman-tab {
+                flex: 1;
+                min-width: 120px;
+            }
+
+            .code-block {
+                padding: 20px 15px;
+                font-size: 0.8rem;
+            }
+
+            .try-it {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .content {
+                padding: 20px 15px;
+            }
+
+            .table {
+                font-size: 0.7rem;
+            }
+
+            .table th,
+            .table td {
+                padding: 8px 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-file-code"></i> Document Extractor API</h1>
+                <p>Documentação completa da API para extração de texto e imagens de documentos</p>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="#overview">Visão Geral</a></li>
+                <li><a href="#authentication">Autenticação</a></li>
+                <li><a href="#endpoints">Endpoints</a></li>
+                <li><a href="#url-extraction">Extração via URL</a></li>
+                <li><a href="#examples">Exemplos</a></li>
+                <li><a href="#errors">Códigos de Erro</a></li>
+                <li><a href="#testing">Testar API</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <section id="overview" class="section">
+                <h2>Visão Geral</h2>
+                <p>A Document Extractor API é uma solução robusta para extração de texto e imagens de diversos tipos de documentos. A API suporta os seguintes formatos:</p>
+                
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Formato</th>
+                            <th>Extensão</th>
+                            <th>MIME Type</th>
+                            <th>Recursos Suportados</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>PDF</td>
+                            <td>.pdf</td>
+                            <td>application/pdf</td>
+                            <td>Texto, Imagens</td>
+                        </tr>
+                        <tr>
+                            <td>Word Document</td>
+                            <td>.docx</td>
+                            <td>application/vnd.openxmlformats-officedocument.wordprocessingml.document</td>
+                            <td>Texto, Tabelas</td>
+                        </tr>
+                        <tr>
+                            <td>Word Document (Legacy)</td>
+                            <td>.doc</td>
+                            <td>application/msword</td>
+                            <td>Texto</td>
+                        </tr>
+                        <tr>
+                            <td>Excel Spreadsheet</td>
+                            <td>.xlsx</td>
+                            <td>application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</td>
+                            <td>Dados estruturados</td>
+                        </tr>
+                        <tr>
+                            <td>Excel Spreadsheet (Legacy)</td>
+                            <td>.xls</td>
+                            <td>application/vnd.ms-excel</td>
+                            <td>Dados estruturados</td>
+                        </tr>
+                        <tr>
+                            <td>Texto Simples</td>
+                            <td>.txt</td>
+                            <td>text/plain</td>
+                            <td>Texto</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="alert info">
+                    <strong>Nota:</strong> A API possui um limite de 50MB por arquivo enviado. Para arquivos maiores, considere dividir o documento ou entrar em contato com o suporte.
+                </div>
+            </section>
+
+            <section id="authentication" class="section">
+                <h2>Autenticação</h2>
+                <p>Atualmente, a API não requer autenticação para uso. Todos os endpoints são públicos e podem ser acessados diretamente.</p>
+                
+                <div class="alert warning">
+                    <strong>Aviso:</strong> Em um ambiente de produção, recomenda-se implementar autenticação via API Key ou OAuth2 para controlar o acesso e monitorar o uso.
+                </div>
+            </section>
+
+            <section id="endpoints" class="section">
+                <h2>Endpoints</h2>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-path">/api/health</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <h4>Verificação de Saúde</h4>
+                        <p>Endpoint para verificar se a API está funcionando corretamente.</p>
+                        
+                        <h4>Resposta</h4>
+                        <div class="response-status success">
+                            <i class="fas fa-check-circle"></i>
+                            200 OK
+                        </div>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">JSON Response</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+<span class="keyword">{</span>
+  <span class="property">"status"</span><span class="keyword">:</span> <span class="string">"healthy"</span><span class="keyword">,</span>
+  <span class="property">"service"</span><span class="keyword">:</span> <span class="string">"Document Extractor API"</span><span class="keyword">,</span>
+  <span class="property">"version"</span><span class="keyword">:</span> <span class="string">"1.0.0"</span>
+<span class="keyword">}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-path">/api/supported-types</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <h4>Tipos de Arquivo Suportados</h4>
+                        <p>Retorna a lista de extensões e tipos MIME suportados pela API.</p>
+                        
+                        <h4>Resposta</h4>
+                        <div class="response-status success">
+                            <i class="fas fa-check-circle"></i>
+                            200 OK
+                        </div>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">JSON Response</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+<span class="keyword">{</span>
+  <span class="property">"supported_extensions"</span><span class="keyword">:</span> <span class="keyword">[</span><span class="string">"txt"</span><span class="keyword">,</span> <span class="string">"pdf"</span><span class="keyword">,</span> <span class="string">"doc"</span><span class="keyword">,</span> <span class="string">"docx"</span><span class="keyword">,</span> <span class="string">"xlsx"</span><span class="keyword">,</span> <span class="string">"xls"</span><span class="keyword">],</span>
+  <span class="property">"mime_types"</span><span class="keyword">:</span> <span class="keyword">{</span>
+    <span class="property">"txt"</span><span class="keyword">:</span> <span class="string">"text/plain"</span><span class="keyword">,</span>
+    <span class="property">"pdf"</span><span class="keyword">:</span> <span class="string">"application/pdf"</span><span class="keyword">,</span>
+    <span class="property">"doc"</span><span class="keyword">:</span> <span class="string">"application/msword"</span><span class="keyword">,</span>
+    <span class="property">"docx"</span><span class="keyword">:</span> <span class="string">"application/vnd.openxmlformats-officedocument.wordprocessingml.document"</span><span class="keyword">,</span>
+    <span class="property">"xlsx"</span><span class="keyword">:</span> <span class="string">"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"</span><span class="keyword">,</span>
+    <span class="property">"xls"</span><span class="keyword">:</span> <span class="string">"application/vnd.ms-excel"</span>
+  <span class="keyword">}</span>
+<span class="keyword">}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method post">POST</span>
+                        <span class="endpoint-path">/api/extract</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <h4>Extração de Documentos</h4>
+                        <p>Endpoint principal para extração de texto e imagens de documentos.</p>
+                        
+                        <h4>Parâmetros</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Parâmetro</th>
+                                    <th>Tipo</th>
+                                    <th>Obrigatório</th>
+                                    <th>Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>file</td>
+                                    <td>File</td>
+                                    <td><span class="badge required">Obrigatório</span></td>
+                                    <td>Arquivo a ser processado (multipart/form-data)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Exemplo de Requisição</h4>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">cURL</button>
+                                <button class="postman-tab">JavaScript</button>
+                                <button class="postman-tab">Python</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+<span class="comment"># Exemplo com cURL</span>
+<span class="keyword">curl</span> <span class="string">-X POST</span> \
+  <span class="string">"http://localhost:5000/api/extract"</span> \
+  <span class="string">-H</span> <span class="string">"Content-Type: multipart/form-data"</span> \
+  <span class="string">-F</span> <span class="string">"file=@documento.pdf"</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Resposta de Sucesso</h4>
+                        <div class="response-status success">
+                            <i class="fas fa-check-circle"></i>
+                            200 OK
+                        </div>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">JSON Response</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+<span class="keyword">{</span>
+  <span class="property">"success"</span><span class="keyword">:</span> <span class="keyword">true</span><span class="keyword">,</span>
+  <span class="property">"data"</span><span class="keyword">:</span> <span class="keyword">{</span>
+    <span class="property">"text"</span><span class="keyword">:</span> <span class="string">"Texto extraído do documento..."</span><span class="keyword">,</span>
+    <span class="property">"file_info"</span><span class="keyword">:</span> <span class="keyword">{</span>
+      <span class="property">"filename"</span><span class="keyword">:</span> <span class="string">"documento.pdf"</span><span class="keyword">,</span>
+      <span class="property">"type"</span><span class="keyword">:</span> <span class="string">"pdf"</span><span class="keyword">,</span>
+      <span class="property">"mime_type"</span><span class="keyword">:</span> <span class="string">"application/pdf"</span>
+    <span class="keyword">},</span>
+    <span class="property">"pages"</span><span class="keyword">:</span> <span class="number">5</span><span class="keyword">,</span>
+    <span class="property">"total_images"</span><span class="keyword">:</span> <span class="number">3</span><span class="keyword">,</span>
+    <span class="property">"images"</span><span class="keyword">:</span> <span class="keyword">[</span>
+      <span class="keyword">{</span>
+        <span class="property">"page"</span><span class="keyword">:</span> <span class="number">1</span><span class="keyword">,</span>
+        <span class="property">"index"</span><span class="keyword">:</span> <span class="number">1</span><span class="keyword">,</span>
+        <span class="property">"format"</span><span class="keyword">:</span> <span class="string">"png"</span><span class="keyword">,</span>
+        <span class="property">"data"</span><span class="keyword">:</span> <span class="string">"base64_encoded_image_data"</span><span class="keyword">,</span>
+        <span class="property">"width"</span><span class="keyword">:</span> <span class="number">800</span><span class="keyword">,</span>
+        <span class="property">"height"</span><span class="keyword">:</span> <span class="number">600</span>
+      <span class="keyword">}</span>
+    <span class="keyword">]</span>
+  <span class="keyword">}</span>
+<span class="keyword">}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Resposta de Erro</h4>
+                        <div class="code-block" data-lang="json">
+{
+  "success": false,
+  "error": "Descrição do erro"
+}</div>
+
+                        <h4>Estrutura de Resposta por Tipo de Arquivo</h4>
+                        
+                        <h4>PDF</h4>
+                        <div class="code-block" data-lang="json">
+{
+  "text": "Texto extraído de todas as páginas",
+  "pages": 10,
+  "images": [...],
+  "total_images": 5
+}</div>
+
+                        <h4>Word (.docx)</h4>
+                        <div class="code-block" data-lang="json">
+{
+  "text": "Texto extraído incluindo tabelas",
+  "paragraphs": 25,
+  "tables": 3
+}</div>
+
+                        <h4>Excel (.xlsx/.xls)</h4>
+                        <div class="code-block" data-lang="json">
+{
+  "text": "Dados de todas as planilhas formatados",
+  "sheets": {
+    "Planilha1": {
+      "text": "Dados da planilha...",
+      "rows": 100,
+      "columns": 5,
+      "column_names": ["Nome", "Idade", "Email", "Telefone", "Cidade"]
+    }
+  },
+  "total_sheets": 3
+}</div>
+
+                        <h4>Texto (.txt)</h4>
+                        <div class="code-block" data-lang="json">
+{
+  "text": "Conteúdo do arquivo de texto",
+  "lines": 50,
+  "characters": 2500,
+  "words": 400
+}</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="url-extraction" class="section">
+                <h2>Extração via URL</h2>
+                <p>A API suporte extração de documentos diretamente de URLs, baixando e processando automaticamente.</p>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method post">POST</span>
+                        <span class="endpoint-path">/api/extract/url</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <h4>Descrição</h4>
+                        <p>Baixa um documento de uma URL e extrai seu conteúdo. Suporta os mesmos formatos de arquivo que o upload direto.</p>
+
+                        <h4>Parâmetros de Entrada (JSON)</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Campo</th>
+                                    <th>Tipo</th>
+                                    <th>Obrigatório</th>
+                                    <th>Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>url</code></td>
+                                    <td>string</td>
+                                    <td><span class="badge required">Sim</span></td>
+                                    <td>URL do documento a ser baixado</td>
+                                </tr>
+                                <tr>
+                                    <td><code>max_size_mb</code></td>
+                                    <td>number</td>
+                                    <td><span class="badge optional">Não</span></td>
+                                    <td>Tamanho máximo em MB (padrão: 50)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Exemplo de Requisição</h4>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">cURL</button>
+                                <button class="postman-tab">JavaScript</button>
+                                <button class="postman-tab">Python</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+curl -X POST http://localhost:5000/api/extract/url \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/document.pdf",
+    "max_size_mb": 20
+  }'
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Resposta de Sucesso</h4>
+                        <div class="response-status success">
+                            <i class="fas fa-check-circle"></i>
+                            200 OK
+                        </div>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">JSON Response</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+<span class="keyword">{</span>
+  <span class="property">"success"</span><span class="keyword">:</span> <span class="keyword">true</span><span class="keyword">,</span>
+  <span class="property">"data"</span><span class="keyword">:</span> <span class="keyword">{</span>
+    <span class="property">"text"</span><span class="keyword">:</span> <span class="string">"Texto extraído do documento..."</span><span class="keyword">,</span>
+    <span class="property">"file_info"</span><span class="keyword">:</span> <span class="keyword">{</span>
+      <span class="property">"filename"</span><span class="keyword">:</span> <span class="string">"document.pdf"</span><span class="keyword">,</span>
+      <span class="property">"type"</span><span class="keyword">:</span> <span class="string">"pdf"</span><span class="keyword">,</span>
+      <span class="property">"size_mb"</span><span class="keyword">:</span> <span class="number">2.5</span><span class="keyword">,</span>
+      <span class="property">"processing_time"</span><span class="keyword">:</span> <span class="number">1.2</span>
+    <span class="keyword">}</span><span class="keyword">,</span>
+    <span class="property">"download_info"</span><span class="keyword">:</span> <span class="keyword">{</span>
+      <span class="property">"source_url"</span><span class="keyword">:</span> <span class="string">"https://example.com/document.pdf"</span><span class="keyword">,</span>
+      <span class="property">"download_successful"</span><span class="keyword">:</span> <span class="keyword">true</span><span class="keyword">,</span>
+      <span class="property">"content_type"</span><span class="keyword">:</span> <span class="string">"application/pdf"</span>
+    <span class="keyword">}</span>
+  <span class="keyword">}</span>
+<span class="keyword">}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <div class="endpoint-header">
+                        <span class="method post">POST</span>
+                        <span class="endpoint-path">/api/extract/url/bulk</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <h4>Descrição</h4>
+                        <p>Processa múltiplas URLs em lote. Limite máximo de 5 URLs por requisição.</p>
+
+                        <h4>Parâmetros de Entrada (JSON)</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Campo</th>
+                                    <th>Tipo</th>
+                                    <th>Obrigatório</th>
+                                    <th>Descrição</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>urls</code></td>
+                                    <td>array</td>
+                                    <td><span class="badge required">Sim</span></td>
+                                    <td>Lista de URLs dos documentos (máx. 5)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>max_size_mb</code></td>
+                                    <td>number</td>
+                                    <td><span class="badge optional">Não</span></td>
+                                    <td>Tamanho máximo por arquivo em MB (padrão: 50)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Exemplo de Requisição</h4>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">JSON Request</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+<span class="keyword">{</span>
+  <span class="property">"urls"</span><span class="keyword">:</span> <span class="keyword">[</span>
+    <span class="string">"https://example.com/doc1.pdf"</span><span class="keyword">,</span>
+    <span class="string">"https://example.com/doc2.docx"</span><span class="keyword">,</span>
+    <span class="string">"https://example.com/data.xlsx"</span>
+  <span class="keyword">]</span><span class="keyword">,</span>
+  <span class="property">"max_size_mb"</span><span class="keyword">:</span> <span class="number">30</span>
+<span class="keyword">}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Resposta de Sucesso</h4>
+                        <div class="response-status success">
+                            <i class="fas fa-check-circle"></i>
+                            200 OK
+                        </div>
+                        <div class="postman-request">
+                            <div class="postman-tabs">
+                                <button class="postman-tab active">JSON Response</button>
+                            </div>
+                            <div class="postman-content">
+                                <div class="code-block">
+                                    <button class="code-copy-btn" onclick="copyCode(this)">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+<span class="keyword">{</span>
+  <span class="property">"success"</span><span class="keyword">:</span> <span class="keyword">true</span><span class="keyword">,</span>
+  <span class="property">"results"</span><span class="keyword">:</span> <span class="keyword">[</span>
+    <span class="keyword">{</span>
+      <span class="property">"index"</span><span class="keyword">:</span> <span class="number">0</span><span class="keyword">,</span>
+      <span class="property">"url"</span><span class="keyword">:</span> <span class="string">"https://example.com/doc1.pdf"</span><span class="keyword">,</span>
+      <span class="property">"filename"</span><span class="keyword">:</span> <span class="string">"doc1.pdf"</span><span class="keyword">,</span>
+      <span class="property">"success"</span><span class="keyword">:</span> <span class="keyword">true</span><span class="keyword">,</span>
+      <span class="property">"data"</span><span class="keyword">:</span> <span class="keyword">{</span> <span class="comment">/* dados extraídos */</span> <span class="keyword">}</span>
+    <span class="keyword">}</span>
+  <span class="keyword">]</span><span class="keyword">,</span>
+  <span class="property">"errors"</span><span class="keyword">:</span> <span class="keyword">[]</span><span class="keyword">,</span>
+  <span class="property">"summary"</span><span class="keyword">:</span> <span class="keyword">{</span>
+    <span class="property">"total_urls"</span><span class="keyword">:</span> <span class="number">3</span><span class="keyword">,</span>
+    <span class="property">"processed"</span><span class="keyword">:</span> <span class="number">3</span><span class="keyword">,</span>
+    <span class="property">"failed"</span><span class="keyword">:</span> <span class="number">0</span><span class="keyword">,</span>
+    <span class="property">"success_rate"</span><span class="keyword">:</span> <span class="number">100.0</span><span class="keyword">,</span>
+    <span class="property">"total_processing_time"</span><span class="keyword">:</span> <span class="number">3.2</span>
+  <span class="keyword">}</span>
+<span class="keyword">}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert info">
+                    <strong>🔒 Segurança:</strong> A API valida as URLs e bloqueia protocolos não seguros. Apenas URLs HTTP/HTTPS são permitidas. Arquivos muito grandes ou que excedam o timeout são rejeitados.
+                </div>
+
+                <div class="alert warning">
+                    <strong>⚠️ Limitações:</strong> O download de URLs está sujeito a timeouts de rede (30 segundos) e limites de tamanho. URLs que requerem autenticação não são suportadas.
+                </div>
+            </section>
+
+            <section id="examples" class="section">
+                <h2>Exemplos de Uso</h2>
+
+                <h3>cURL</h3>
+                <div class="code-block" data-lang="bash">
+# Verificar saúde da API
+curl -X GET http://localhost:5000/api/health
+
+# Obter tipos suportados
+curl -X GET http://localhost:5000/api/supported-types
+
+# Extrair dados de um documento
+curl -X POST http://localhost:5000/api/extract \
+  -F "file=@documento.pdf"</div>
+
+                <h3>JavaScript (Fetch API)</h3>
+                <div class="code-block" data-lang="javascript">
+// Função para extrair dados de um arquivo
+async function extractDocument(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetch('/api/extract', {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('Texto extraído:', result.data.text);
+      console.log('Informações do arquivo:', result.data.file_info);
+    } else {
+      console.error('Erro:', result.error);
+    }
+  } catch (error) {
+    console.error('Erro de rede:', error);
+  }
+}
+
+// Usar com input de arquivo
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  if (e.target.files.length > 0) {
+    extractDocument(e.target.files[0]);
+  }
+});</div>
+
+                <h3>Python (requests)</h3>
+                <div class="code-block" data-lang="python">
+import requests
+
+# Verificar saúde da API
+response = requests.get('http://localhost:5000/api/health')
+print(response.json())
+
+# Extrair dados de um documento
+with open('documento.pdf', 'rb') as file:
+    files = {'file': file}
+    response = requests.post('http://localhost:5000/api/extract', files=files)
+    
+    if response.status_code == 200:
+        result = response.json()
+        if result['success']:
+            print("Texto extraído:", result['data']['text'])
+        else:
+            print("Erro:", result['error'])
+    else:
+        print("Erro HTTP:", response.status_code)</div>
+            </section>
+
+            <section id="errors" class="section">
+                <h2>Códigos de Erro</h2>
+                
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Código HTTP</th>
+                            <th>Erro</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>400</td>
+                            <td>Bad Request</td>
+                            <td>Nenhum arquivo enviado ou tipo de arquivo não suportado</td>
+                        </tr>
+                        <tr>
+                            <td>413</td>
+                            <td>Payload Too Large</td>
+                            <td>Arquivo excede o limite de 50MB</td>
+                        </tr>
+                        <tr>
+                            <td>500</td>
+                            <td>Internal Server Error</td>
+                            <td>Erro interno durante o processamento do arquivo</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Exemplos de Mensagens de Erro</h3>
+                <div class="code-block" data-lang="json">
+// Nenhum arquivo enviado
+{
+  "error": "Nenhum arquivo foi enviado"
+}
+
+// Tipo de arquivo não suportado
+{
+  "error": "Tipo de arquivo não suportado",
+  "supported_types": ["txt", "pdf", "doc", "docx", "xlsx", "xls"]
+}
+
+// Erro de processamento
+{
+  "success": false,
+  "error": "Erro ao extrair texto do PDF: arquivo corrompido"
+}</div>
+            </section>
+
+            <section id="testing" class="section">
+                <h2>Testar a API</h2>
+                
+                <div class="try-it">
+                    <h4>🧪 Interface de Testes</h4>
+                    <p>Use nossa interface web interativa para testar a API com seus próprios documentos.</p>
+                    <button class="btn" onclick="window.open('/', '_blank')">Abrir Interface de Testes</button>
+                </div>
+
+                <div class="alert success">
+                    <strong>Dica:</strong> A interface de testes permite arrastar e soltar arquivos, visualizar resultados em tempo real e baixar imagens extraídas.
+                </div>
+
+                <h3>Teste Rápido via cURL</h3>
+                <p>Para um teste rápido, você pode usar os seguintes comandos:</p>
+                
+                <div class="code-block" data-lang="bash">
+# 1. Verificar se a API está funcionando
+curl -X GET http://localhost:5000/api/health
+
+# 2. Ver tipos de arquivo suportados
+curl -X GET http://localhost:5000/api/supported-types
+
+# 3. Testar com um arquivo de texto simples
+echo "Este é um teste da API" > teste.txt
+curl -X POST http://localhost:5000/api/extract -F "file=@teste.txt"</div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // Smooth scrolling para links de navegação
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href').substring(1);
+                const targetElement = document.getElementById(targetId);
+                
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Highlight da seção ativa na navegação
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('.section');
+            const navLinks = document.querySelectorAll('.nav a');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (window.pageYOffset >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Funcionalidade de tabs Postman-style
+        document.querySelectorAll('.postman-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const parent = this.closest('.postman-request');
+                const tabs = parent.querySelectorAll('.postman-tab');
+                const contents = parent.querySelectorAll('.code-block');
+                
+                // Remove active de todas as tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                
+                // Adiciona active na tab clicada
+                this.classList.add('active');
+                
+                // Implementar switch de conteúdo baseado na tab (futura implementação)
+                const tabName = this.textContent.toLowerCase();
+                console.log(`Switched to tab: ${tabName}`);
+            });
+        });
+
+        // Função para copiar código
+        function copyCode(button) {
+            const codeBlock = button.parentElement;
+            const code = codeBlock.textContent
+                .replace('Copiar', '')
+                .trim();
+            
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+                button.style.background = 'rgba(0, 212, 170, 0.2)';
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Erro ao copiar:', err);
+                button.innerHTML = '<i class="fas fa-times"></i> Erro';
+                setTimeout(() => {
+                    button.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+                }, 2000);
+            });
+        }
+
+        // Adicionar animações aos elementos quando entram na tela
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observar elementos para animação
+        document.querySelectorAll('.endpoint, .table, .postman-request, .alert').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            observer.observe(el);
+        });
+
+        // Adicionar efeitos de hover dinâmicos
+        document.querySelectorAll('.endpoint').forEach(endpoint => {
+            endpoint.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-4px) scale(1.01)';
+            });
+            
+            endpoint.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(-2px) scale(1)';
+            });
+        });
+
+        // Adicionar efeito de brilho aos botões
+        document.querySelectorAll('.btn').forEach(btn => {
+            btn.addEventListener('mouseenter', function() {
+                const rect = this.getBoundingClientRect();
+                const ripple = document.createElement('div');
+                ripple.style.position = 'absolute';
+                ripple.style.borderRadius = '50%';
+                ripple.style.background = 'rgba(255, 255, 255, 0.3)';
+                ripple.style.transform = 'scale(0)';
+                ripple.style.animation = 'ripple 0.6s linear';
+                ripple.style.left = '50%';
+                ripple.style.top = '50%';
+                ripple.style.width = '100px';
+                ripple.style.height = '100px';
+                ripple.style.marginLeft = '-50px';
+                ripple.style.marginTop = '-50px';
+                this.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+
+        // CSS para animação de ripple
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                to {
+                    transform: scale(2);
+                    opacity: 0;
+                }
+            }
+            
+            .nav a.active {
+                background: var(--accent-cyan) !important;
+                color: white;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
+
