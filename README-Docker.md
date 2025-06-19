@@ -85,6 +85,20 @@ environment:
   - CUSTOM_VAR=value
 ```
 
+### Configurações de DNS
+O container está configurado com:
+
+**Servidores DNS:**
+- Google DNS: `8.8.8.8`, `8.8.4.4`
+- Cloudflare DNS: `1.1.1.1`
+
+**Mapeamento de Hosts:**
+- `potencial.com.br` → `127.0.0.1`
+- `api.potencial.com.br` → `127.0.0.1`
+- `www.potencial.com.br` → `127.0.0.1`
+
+Para alterar, edite as seções `dns` e `extra_hosts` nos arquivos docker-compose.
+
 ## 🗄️ Banco de Dados
 
 ### SQLite (Padrão)

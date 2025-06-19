@@ -1,0 +1,45 @@
+# Exemplos de Configuração DNS para Docker
+
+# 1. DNS BÁSICO - Usar servidores DNS externos
+dns:
+  - 8.8.8.8        # Google DNS
+  - 8.8.4.4        # Google DNS Secundário
+  - 1.1.1.1        # Cloudflare DNS
+  - 208.67.222.222 # OpenDNS
+
+# 2. MAPEAMENTO DE HOSTS - Apontar domínios para IPs específicos
+extra_hosts:
+  # Para desenvolvimento local
+  - "potencial.com.br:127.0.0.1"
+  - "api.potencial.com.br:127.0.0.1"
+  - "www.potencial.com.br:127.0.0.1"
+  
+  # Para apontar para servidor específico
+  # - "potencial.com.br:192.168.1.100"
+  # - "api.potencial.com.br:192.168.1.101"
+  
+  # Para apontar para outro container
+  # - "database.potencial.com.br:database"
+
+# 3. EXEMPLO COMPLETO PARA PRODUÇÃO
+# services:
+#   document-extractor-api:
+#     # ... outras configurações ...
+#     dns:
+#       - 8.8.8.8
+#       - 1.1.1.1
+#     extra_hosts:
+#       - "potencial.com.br:SEU_IP_DO_SERVIDOR"
+#       - "api.potencial.com.br:SEU_IP_DO_SERVIDOR"
+#     environment:
+#       - SERVER_NAME=potencial.com.br
+
+# 4. PARA USAR DNS INTERNO DA EMPRESA
+# dns:
+#   - 192.168.1.1    # DNS do seu servidor interno
+#   - 8.8.8.8        # Fallback externo
+
+# 5. VERIFICAR DNS DENTRO DO CONTAINER
+# docker exec -it document-extractor-api nslookup potencial.com.br
+# docker exec -it document-extractor-api cat /etc/hosts
+# docker exec -it document-extractor-api cat /etc/resolv.conf 

@@ -18,6 +18,15 @@ services:
       - ./src:/app/src
       - ./main.py:/app/main.py
     restart: unless-stopped
+    # DNS Configuration
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    extra_hosts:
+      - "potencial.com.br:127.0.0.1"
+      - "api.potencial.com.br:127.0.0.1"
+      - "www.potencial.com.br:127.0.0.1"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s

@@ -59,7 +59,7 @@ README*
 CHANGELOG*
 LICENSE*
 
-# Test files
+# Test files (if any)
 test*.py
 *test.py
 tests/
