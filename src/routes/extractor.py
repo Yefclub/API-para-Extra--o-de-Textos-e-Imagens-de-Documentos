@@ -116,7 +116,8 @@ def download_file_from_url(url, max_size=50*1024*1024):
             'User-Agent': 'Document-Extractor-API/1.0 (File Processing Bot)',
             'Accept': '*/*',
             'Accept-Encoding': 'gzip, deflate',
-            'Connection': 'keep-alive'
+            'Connection': 'keep-alive',
+            'Cache-Control': 'no-cache'
         }
         
         # Fazer requisição HEAD primeiro para verificar tamanho
@@ -133,8 +134,10 @@ def download_file_from_url(url, max_size=50*1024*1024):
             pass
         
         # Fazer download do arquivo
-        response = requests.get(url, headers=headers, timeout=30, stream=True, allow_redirects=True)
+        logger.info(f"Iniciando download de: {url}")
+        response = requests.get(url, headers=headers, timeout=60, stream=True, allow_redirects=True, verify=True)
         response.raise_for_status()
+        logger.info(f"Download iniciado com sucesso. Status: {response.status_code}")
         
         # Verificar Content-Type se disponível
         content_type = response.headers.get('content-type', '').lower()
@@ -193,11 +196,17 @@ def download_file_from_url(url, max_size=50*1024*1024):
         }
         
     except requests.exceptions.Timeout:
+        logger.error(f"Timeout ao acessar {url}")
         raise Exception("Timeout ao baixar arquivo. Tente novamente.")
-    except requests.exceptions.ConnectionError:
-        raise Exception("Erro de conexão ao baixar arquivo.")
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Erro de conexão ao acessar {url}: {str(e)}")
+        raise Exception(f"Erro de conexão ao baixar arquivo. Verifique se o domínio está acessível: {str(e)}")
     except requests.exceptions.HTTPError as e:
+        logger.error(f"Erro HTTP ao acessar {url}: {e.response.status_code}")
         raise Exception(f"Erro HTTP ao baixar arquivo: {e.response.status_code}")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Erro geral de requisição ao acessar {url}: {str(e)}")
+        raise Exception(f"Erro na requisição: {str(e)}")
     except Exception as e:
         raise Exception(f"Erro ao baixar arquivo: {str(e)}")
 

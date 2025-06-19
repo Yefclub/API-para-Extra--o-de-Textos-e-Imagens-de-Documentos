@@ -240,4 +240,46 @@ docker-compose exec document-extractor-api bash
 
 # Executar testes Python
 docker-compose exec document-extractor-api python -m pytest
+
+# Debug de conectividade de rede
+docker-compose exec document-extractor-api python debug-network.py
+```
+
+## 🌐 Troubleshooting de Conectividade
+
+### Erro: "Erro de conexão ao baixar arquivo"
+
+Se você receber este erro ao tentar extrair de URLs externas:
+
+**1. Verificar DNS e Conectividade:**
+```bash
+# Executar script de debug
+docker-compose exec document-extractor-api python debug-network.py
+
+# Testar DNS manualmente
+docker-compose exec document-extractor-api nslookup potential-ai.grpotencial.com.br
+
+# Testar conectividade
+docker-compose exec document-extractor-api curl -I https://potential-ai.grpotencial.com.br
+```
+
+**2. Verificar Configuração de Proxy/Firewall:**
+- Certifique-se de que o container pode acessar URLs externas
+- Verifique se há firewall bloqueando conexões HTTPS (porta 443)
+- Se usar proxy corporativo, configure nas variáveis de ambiente
+
+**3. Configurar Proxy (se necessário):**
+```yaml
+# No docker-compose.yml, adicione:
+environment:
+  - HTTP_PROXY=http://seu-proxy:porta
+  - HTTPS_PROXY=http://seu-proxy:porta
+  - NO_PROXY=localhost,127.0.0.1
+```
+
+**4. Ajustar Mapeamento de Hosts:**
+Se o domínio `potential-ai.grpotencial.com.br` deve apontar para um IP específico:
+```yaml
+extra_hosts:
+  - "potential-ai.grpotencial.com.br:IP_DO_SERVIDOR"
 ``` 

@@ -27,6 +27,10 @@ services:
       - "potencial.com.br:127.0.0.1"
       - "api.potencial.com.br:127.0.0.1"
       - "www.potencial.com.br:127.0.0.1"
+      # Remove the line below if you need external access to potential-ai.grpotencial.com.br
+      # - "potential-ai.grpotencial.com.br:192.168.0.1"  # Replace with actual IP
+    # Network configuration for external access
+    network_mode: "bridge"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
